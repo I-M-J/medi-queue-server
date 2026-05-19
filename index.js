@@ -157,3 +157,21 @@ app.post('/tutors', verifyToken, async (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
 });
+
+app.get('/tutors/user/:email', verifyToken, async (req, res) => {
+    try {
+        const email = req.params.email;
+
+        if (req.user.email !== email) {
+            return res.status(403).send({ message: 'Forbidden access' });
+        }
+
+        const query = { tutorEmail: email };
+        const result = await tutorsCollection.find(query).toArray();
+
+        res.send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to fetch user tutors', error: error.message });
+    }
+});
