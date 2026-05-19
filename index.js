@@ -46,3 +46,36 @@ async function connectDB() {
 
 connectDB().catch(console.dir);
 
+const checkDbConnection = (req, res, next) => {
+    if (!tutorsCollection || !bookingsCollection) {
+        return res.status(503).send({
+            message: 'Service Unavailable: Database connection not established. Please check server logs and configuration.'
+        });
+    }
+
+    next();
+};
+
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).send({ message: 'Unauthorized access: Missing token' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+        const JWKS = createRemoteJWKSet(new URL(`${clientUrl}/api/auth/jwks`));
+        const { payload } = await jwtVerify(token, JWKS);
+        req.user = payload;
+        next();
+    }
+    catch (error) {
+        return res.status(403).send({ message: 'Forbidden access: Invalid token', error: error.message });
+    }
+};
+
+app.get('/', (req, res) => {
+    res.send('MediQueue Tutor Booking Server is running');
+});
