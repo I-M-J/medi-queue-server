@@ -149,13 +149,10 @@ app.post('/tutors', verifyToken, async (req, res) => {
 
         const result = await tutorsCollection.insertOne(newTutor);
         res.status(201).send(result);
-    } catch (error) {
+    }
+    catch (error) {
         res.status(500).send({ message: 'Failed to insert tutor', error: error.message });
     }
-});
-
-app.listen(port, () => {
-    console.log(`Server is running on port: ${port}`);
 });
 
 app.get('/tutors/user/:email', verifyToken, async (req, res) => {
@@ -174,4 +171,52 @@ app.get('/tutors/user/:email', verifyToken, async (req, res) => {
     catch (error) {
         res.status(500).send({ message: 'Failed to fetch user tutors', error: error.message });
     }
+});
+
+app.patch('/tutors/:id', verifyToken, async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: 'Invalid tutor ID format' });
+        }
+        const filter = { _id: new ObjectId(id) };
+        const updatedData = { ...req.body };
+
+        delete updatedData._id;
+
+
+        if (updatedData.totalSlot !== undefined) {
+            updatedData.totalSlot = Number(updatedData.totalSlot);
+        }
+
+        const updateDoc = {
+            $set: updatedData
+        };
+
+        const result = await tutorsCollection.updateOne(filter, updateDoc);
+        res.send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to update tutor', error: error.message });
+    }
+});
+
+
+app.delete('/tutors/:id', verifyToken, async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: 'Invalid tutor ID format' });
+        }
+        const query = { _id: new ObjectId(id) };
+        const result = await tutorsCollection.deleteOne(query);
+        res.send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to delete tutor', error: error.message });
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on port: ${port}`);
 });
