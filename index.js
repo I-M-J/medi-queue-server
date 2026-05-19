@@ -79,3 +79,45 @@ const verifyToken = async (req, res, next) => {
 app.get('/', (req, res) => {
     res.send('MediQueue Tutor Booking Server is running');
 });
+
+app.use(checkDbConnection);
+
+app.get('/tutors', async (req, res) => {
+    try {
+        const { search, limit, startDate, endDate } = req.query;
+        const query = {};
+
+        if (search) {
+            query.tutorName = { $regex: search, $options: 'i' };
+        }
+
+        if (startDate && endDate) {
+            query.sessionStartDate = {
+                $gte: startDate,
+                $lte: endDate
+            };
+        }
+        else if (startDate) {
+            query.sessionStartDate = { $gte: startDate };
+        }
+        else if (endDate) {
+            query.sessionStartDate = { $lte: endDate };
+        }
+
+        let parsedLimit = parseInt(limit);
+        if (isNaN(parsedLimit) || parsedLimit <= 0) {
+            parsedLimit = 0;
+        }
+
+        const result = await tutorsCollection.find(query).limit(parsedLimit).toArray();
+
+        res.send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to fetch tutors', error: error.message });
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on port: ${port}`);
+});
