@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 
 
@@ -115,6 +115,27 @@ app.get('/tutors', async (req, res) => {
     }
     catch (error) {
         res.status(500).send({ message: 'Failed to fetch tutors', error: error.message });
+    }
+});
+
+app.get('/tutors/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: 'Invalid tutor ID format' });
+        }
+
+        const query = { _id: new ObjectId(id) };
+        const result = await tutorsCollection.findOne(query);
+
+        if (!result) {
+            return res.status(404).send({ message: 'Tutor not found' });
+        }
+
+        res.send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to fetch tutor', error: error.message });
     }
 });
 
