@@ -139,6 +139,21 @@ app.get('/tutors/:id', async (req, res) => {
     }
 });
 
+app.post('/tutors', verifyToken, async (req, res) => {
+    try {
+        const newTutor = req.body;
+
+        if (newTutor.totalSlot !== undefined) {
+            newTutor.totalSlot = Number(newTutor.totalSlot);
+        }
+
+        const result = await tutorsCollection.insertOne(newTutor);
+        res.status(201).send(result);
+    } catch (error) {
+        res.status(500).send({ message: 'Failed to insert tutor', error: error.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
 });
