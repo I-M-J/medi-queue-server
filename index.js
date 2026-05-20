@@ -217,6 +217,67 @@ app.delete('/tutors/:id', verifyToken, async (req, res) => {
     }
 });
 
+app.post('/bookings', verifyToken, async (req, res) => {
+    try {
+        const booking = req.body;
+        const result = await bookingsCollection.insertOne(booking);
+
+        if (booking.tutorId) {
+            try {
+                if (ObjectId.isValid(booking.tutorId)) {
+                    const tutorFilter = { _id: new ObjectId(booking.tutorId) };
+                    await tutorsCollection.updateOne(tutorFilter, {
+                        $inc: { totalSlot: -1 }
+                    });
+                } else {
+                    console.warn(`Skipped decrementing slots: Invalid tutorId format: ${booking.tutorId}`);
+                }
+            } catch (tutorError) {
+                console.error('Error decrementing totalSlot for tutor:', tutorError.message);
+            }
+        }
+
+        res.status(201).send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to create booking', error: error.message });
+    }
+});
+
+app.get('/bookings/:email', verifyToken, async (req, res) => {
+    try {
+        const email = req.params.email;
+
+        if (req.user.email !== email) {
+            return res.status(403).send({ message: 'Forbidden access' });
+        }
+        const query = { userEmail: email };
+        const result = await bookingsCollection.find(query).toArray();
+        res.send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to fetch user bookings', error: error.message });
+    }
+});
+
+app.patch('/bookings/cancel/:id', verifyToken, async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: 'Invalid booking ID format' });
+        }
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+            $set: { status: 'cancelled' }
+        };
+        const result = await bookingsCollection.updateOne(filter, updateDoc);
+        res.send(result);
+    }
+    catch (error) {
+        res.status(500).send({ message: 'Failed to cancel booking', error: error.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
 });
