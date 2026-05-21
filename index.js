@@ -23,6 +23,8 @@ else {
     console.warn("WARNING: MONGODB_URI is not set to a valid connection string. Please check your .env file.");
 }
 
+let dbConnectionPromise = null;
+
 async function connectDB() {
     if (!client) {
         console.warn("Skipping MongoDB connection: client not initialized due to missing or invalid MONGODB_URI.");
@@ -41,16 +43,35 @@ async function connectDB() {
     }
     catch (error) {
         console.error("Database connection error:", error);
+        dbConnectionPromise = null;
+        throw error;
     }
 }
 
-connectDB().catch(console.dir);
+dbConnectionPromise = connectDB();
 
-const checkDbConnection = (req, res, next) => {
+const checkDbConnection = async (req, res, next) => {
     if (!tutorsCollection || !bookingsCollection) {
-        return res.status(503).send({
-            message: 'Service Unavailable: Database connection not established. Please check server logs and configuration.'
-        });
+        if (dbConnectionPromise) {
+            try {
+                await dbConnectionPromise;
+            } catch (err) {
+                return res.status(503).send({
+                    message: 'Service Unavailable: Database connection failed.',
+                    error: err.message
+                });
+            }
+        } else {
+            try {
+                dbConnectionPromise = connectDB();
+                await dbConnectionPromise;
+            } catch (err) {
+                return res.status(503).send({
+                    message: 'Service Unavailable: Database connection could not be established.',
+                    error: err.message
+                });
+            }
+        }
     }
 
     next();
@@ -278,6 +299,10 @@ app.patch('/bookings/cancel/:id', verifyToken, async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port: ${port}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(port, () => {
+        console.log(`Server is running on port: ${port}`);
+    });
+}
+
+module.exports = app;
